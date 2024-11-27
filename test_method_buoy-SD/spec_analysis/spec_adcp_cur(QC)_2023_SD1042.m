@@ -1,7 +1,7 @@
 %% Compute velocity's spectra using RC's multitaper method
 % 2024/10/14
 clear; close all; clc
-cd('~/Documents/projects/sd-ni-wp/test_method_buoy-SD/')
+cd('~/Documents/projects/sd-ni-wp/test_method_buoy-SD/spec_analysis/')
 restoredefaultpath
 addpath(genpath('~/Documents/MATLAB/mymatlab/'))
 addpath('~/Documents/projects/sd-ni-wp/data_manipulate/')
@@ -23,7 +23,7 @@ u = ncread([path_cur_SD fname], 'vel_east');
 v = ncread([path_cur_SD fname], 'vel_north');
 depth = ncread([path_cur_SD fname],'depth');
 data_flag = ncread([path_cur_SD fname],'data_flag');
-%% ===  put flagged data to NaN
+% ===  put flagged data to NaN
 u(data_flag ~= 0) = NaN;
 v(data_flag ~= 0) = NaN;
 
@@ -101,6 +101,10 @@ end
 
 plot( f_coriolis_cpd*[1 1],speclim,'b--' ); 
 text(f_coriolis_cpd, speclim(2)*1.3,'f','Color','b')
+plot( f_coriolis_cpd*[0.8 0.8],speclim,'b--' ); 
+text(0.7*f_coriolis_cpd, speclim(2)*1.3,'0.8f','Color','b')
+plot( f_coriolis_cpd*[1.2 1.2],speclim,'b--' ); 
+text(1.2*f_coriolis_cpd, speclim(2)*1.3,'1.2f','Color','b')
 plot( f_M2_cpd*[1 1],speclim,'b--' ); 
 text(f_M2_cpd, speclim(2)*1.3,'M2','Color','b')
 
@@ -214,8 +218,14 @@ for i = 1:numel(varnms_plot)
     ylim(speclim)
     % speclim = get(gca,'YLim');
 end
-plot( f_coriolis_cpd*[1 1],speclim,'--','Color',[.2,.2,.2] ); 
-text(f_coriolis_cpd, speclim(2)*1.3,'f','Color',[.2,.2,.2],'Fontsize',14)
+% add frequency band vertical lines & labels
+n_f = [0.8, 1, 1.3];
+n_f_pos_x0 = [0.6, 0.9, 1.35];
+for i = 1:numel(n_f)
+    plot( f_coriolis_cpd*[n_f(i) n_f(i)],speclim,'--','Color',[.2,.2,.2] ); 
+    text(n_f_pos_x0(i)*f_coriolis_cpd, speclim(2)*1.3,[num2str(n_f(i),'%.1f') 'f'],...
+        'Color',[.2,.2,.2],'Fontsize',12)
+end
 plot( f_M2_cpd*[1 1],speclim,'--','Color',[.2,.2,.2] ); 
 text(f_M2_cpd, speclim(2)*1.3,'M2','Color',[.2,.2,.2],'Fontsize',14)
 legend(hl,{'u','v','u-u_{tide}','v-v_{tide}'})
