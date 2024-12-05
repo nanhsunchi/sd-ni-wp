@@ -13,7 +13,7 @@ path_cur_SD = '/Users/chi/Documents/projects/sd-ni-wp/data_manipulate/data_merge
 fname = ['adcp-raw-merge-' year '-SD' platf_num '.nc'];
 path_tide_SD = '/Users/chi/Documents/projects/sd-ni-wp/data_manipulate/data_SD_uv_tide/';
 fname_tide = ['timeseries_uv-tide_' year '-SD' platf_num '.txt'];
-
+zlim = [6,6];
 %% === Read SD adcp data
 tlim_plot = [datetime(str2double(year),10,19), datetime(str2double(year),11,15,12,0,0)];
 tticks = tlim_plot(1):days(1):tlim_plot(2);
@@ -21,7 +21,9 @@ tticks = tlim_plot(1):days(1):tlim_plot(2);
 dtime = datetime(str2double(year),1,1,0,0,ncread([path_cur_SD fname],'time'));
 u = ncread([path_cur_SD fname], 'vel_east');
 v = ncread([path_cur_SD fname], 'vel_north');
-depth = ncread([path_cur_SD fname],'depth');
+depth = ncread([path_cur_SD fname],'depth')+1.8;
+iz = find( (depth>= zlim(1)) & (depth<= zlim(2) ));
+disp(depth(iz))
 data_flag = ncread([path_cur_SD fname],'data_flag');
 % ===  put flagged data to NaN
 u(data_flag ~= 0) = NaN;
@@ -70,7 +72,7 @@ f_coriolis_cpd = f_coriolis*86400/(2*pi);
 f_M2_cpd = 2/((24+50/60)/24);
 close all
 for i = 1:2
-    data = eval([varnms_plot{i} '(1,:)']);
+    data = nanmean(eval([varnms_plot{i} '(iz,:)']), 1);
     %%%
     nt = numel(data);
     nbin = 64; % no of frequency bands in request.
@@ -96,6 +98,7 @@ for i = 1:2
     uistack(h1p,'bottom')
     set(gca,'XScale','log','YScale','log')
     xlabel('cpd'); ylabel('\Phi_u (m^2 s^{-2})')
+    ylim([1e-3 1e1])
     speclim = get(gca,'YLim');
 end
 
@@ -109,7 +112,8 @@ plot( f_M2_cpd*[1 1],speclim,'b--' );
 text(f_M2_cpd, speclim(2)*1.3,'M2','Color','b')
 
 % save figure
-saveas(gcf,append('spectra_uv(QC)_',year,'-SD',platf_num,'_',...
+saveas(gcf,append('spectra_uv(QC_',num2str(zlim(1)),'m-',num2str(zlim(2)),'m)_',...
+    year,'-SD',platf_num,'_',...
     string(datetime(tlim_plot(1),'format','yMMd')),'_', ...
     string(datetime(tlim_plot(2),'format','MMd')),'.png'))
 
@@ -131,7 +135,7 @@ v_tide_intp = interp1( dtime_tide(isok), squeeze(v_tide(isok)), dtime_intp );
 %% plot the detide SD velocity
 close; clc
 u_lim = [-40,40]; cint = 3;
-zlim = [0,50];
+zlim_plot = [0,50];
 varnms_plot = {'u','u-u_{tide}','v','v_{tide}'};
 for i = 1:4
     subplot(4,1,i)
@@ -153,7 +157,7 @@ for i = 1:4
     caxis(u_lim);
     xticks(datenum(tticks))
     xticklabels(string(tticks,'M/dd'))
-    yticks(zlim(1):10:zlim(2))
+    yticks(zlim_plot(1):10:zlim_plot(2))
     % datetick('x','mm/dd')
     set(gca, 'YDir','reverse','YLim',zlim,'XLim',datenum(tlim_plot))
     colorbar
@@ -167,7 +171,7 @@ saveas(gcf,append('time-depth_uv(QC)_detide_',year,'-SD',platf_num,'_',...
 %% compute spectra - after removing barotropic tide
 linstyle = {'-','-','--','--'};
 linewidth = [1.5,1.5,3,3];
-col = {'b','r','c','m'};
+col = {'#063970','#A2142F','c','m'};
 % col_shade = {'','',[204,255,255]/255,[255,240,245]/255};
 col_shade = {'','','c','m'};
 varnms_txt = {'u','v','u-u_{tide}','v-v_{tide}'};
@@ -182,7 +186,7 @@ speclim = [4e-3,1e1];
 close all
 for i = 1:numel(varnms_plot)
     % u-u_tide in m/s
-    data = eval([varnms_plot{i} '(1,:)'])-0.01*eval(varnms_tide_plot{i});
+    data = nanmean(eval([varnms_plot{i} '(iz,:)']), 1)-0.01*eval(varnms_tide_plot{i});
     %%%
     nt = numel(data);
     nbin = 64; % no of frequency bands in request.
@@ -203,7 +207,7 @@ for i = 1:numel(varnms_plot)
     mf_cpd = mf/(15*60)*86400;
     if ~isempty(col_shade{i})
         h1p = plainshaded(mf_cpd, mf_cpd.*sp1'.*up, mf_cpd, mf_cpd.*sp1'.*lw, ...
-            col_shade{i}); alpha(h1p,0.25)
+            col_shade{i}); alpha(h1p,0.1)
     end
     hold on
     h1 = plot(mf_cpd,mf_cpd.*sp1','LineStyle',linstyle{i},'Color',col{i},'LineWidth',linewidth(i)); 
@@ -215,8 +219,8 @@ for i = 1:numel(varnms_plot)
     end
     set(gca,'XScale','log','YScale','log')
     xlabel('cpd'); ylabel('\Phi_u (m^2 s^{-2})')
-    ylim(speclim)
-    % speclim = get(gca,'YLim');
+    ylim([4e-3,1e1])
+    speclim = get(gca,'YLim');
 end
 % add frequency band vertical lines & labels
 n_f = [0.8, 1, 1.3];
@@ -229,9 +233,11 @@ end
 plot( f_M2_cpd*[1 1],speclim,'--','Color',[.2,.2,.2] ); 
 text(f_M2_cpd, speclim(2)*1.3,'M2','Color',[.2,.2,.2],'Fontsize',14)
 legend(hl,{'u','v','u-u_{tide}','v-v_{tide}'})
+ylim([4e-3,1e1])
 
 % save figure
-saveas(gcf,append('spectra(nbin=',num2str(nbin),')_uv(QC)-detide_',year,'-SD',platf_num,'_',...
+saveas(gcf,append('spectra(nbin=',num2str(nbin),')_uv(QC_',num2str(zlim(1)),'m-',num2str(zlim(2)),...
+    'm)-detide_',year,'-SD',platf_num,'_',...
     string(datetime(tlim_plot(1),'format','yMMd')),'_', ...
     string(datetime(tlim_plot(2),'format','MMd')),'.png'))
 
